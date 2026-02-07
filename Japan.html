@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Japan Trip Planner</title>
+<style>
+/* ========== CSS Custom Properties ========== */
+:root {
+  --bg: #F5F0E8;
+  --card-bg: #FFFDF7;
+  --text: #3C3C3C;
+  --terracotta: #C67B5C;
+  --moss: #8B9E6B;
+  --beige: #D4C5A9;
+  --stone: #A89F91;
+  --sidebar-w: 280px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ========== Reset & Base ========== */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; font-family: var(--font); background: var(--bg); color: var(--text); }
+
+#app { display: flex; height: 100vh; }
+
+/* ========== Sidebar ========== */
+#sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--card-bg);
+  border-right: 1px solid var(--beige);
+  display: flex;
+  flex-direction: column;
+  transition: min-width 0.3s, width 0.3s, opacity 0.3s;
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+#sidebar.collapsed { width: 0; min-width: 0; }
+#sidebar.collapsed #sidebar-inner { opacity: 0; pointer-events: none; }
+
+#sidebar-toggle {
+  position: absolute;
+  top: 12px;
+  right: -32px;
+  width: 28px;
+  height: 28px;
+  background: var(--card-bg);
+  border: 1px solid var(--beige);
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--stone);
+  z-index: 11;
+  transition: background 0.2s;
+}
+#sidebar-toggle:hover { background: var(--beige); }
+
+#sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  opacity: 1;
+  transition: opacity 0.2s;
+}
+
+/* Search */
+#search-wrap {
+  padding: 12px 12px 8px;
+}
+#search {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--beige);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: var(--font);
+  background: var(--bg);
+  outline: none;
+}
+#search:focus { border-color: var(--terracotta); }
+
+/* Tabs */
+#tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px 12px 8px;
+}
+.tab {
+  padding: 4px 8px;
+  font-size: 11px;
+  border-radius: 12px;
+  border: 1px solid var(--beige);
+  background: transparent;
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--stone);
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.tab:hover { background: var(--beige); color: var(--text); }
+.tab.active { background: var(--terracotta); color: #fff; border-color: var(--terracotta); }
+
+/* Activity List */
+#activity-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px 12px;
+}
+#activity-list::-webkit-scrollbar { width: 4px; }
+#activity-list::-webkit-scrollbar-thumb { background: var(--beige); border-radius: 2px; }
+
+.lib-card {
+  background: var(--bg);
+  border: 1px solid var(--beige);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 6px;
+  cursor: grab;
+  transition: box-shadow 0.2s, transform 0.15s;
+  user-select: none;
+}
+.lib-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); transform: translateY(-1px); }
+.lib-card:active { cursor: grabbing; }
+.lib-card .lc-header { display: flex; align-items: center; gap: 6px; }
+.lib-card .lc-emoji { font-size: 18px; }
+.lib-card .lc-name { font-size: 13px; font-weight: 600; }
+.lib-card .lc-city {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--beige);
+  color: var(--stone);
+  margin-left: auto;
+}
+.lib-card .lc-desc { font-size: 11px; color: var(--stone); margin-top: 4px; line-height: 1.4; }
+.lib-card .lc-meta { display: flex; gap: 10px; margin-top: 6px; font-size: 11px; color: var(--stone); }
+.lib-card .lc-meta span { display: flex; align-items: center; gap: 3px; }
+
+/* ========== Main Board ========== */
+#board {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  cursor: grab;
+  background-color: var(--bg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cdefs%3E%3Cpath id='p' d='M0-10C-2-10-4-6-4-3C-4 0-2 2 0 4C2 2 4 0 4-3C4-6 2-10 0-10Z' /%3E%3Cpath id='lp' d='M0-7C-1.5-7-3-4.5-3-2C-3 0-1.5 1.5 0 3C1.5 1.5 3 0 3-2C3-4.5 1.5-7 0-7Z' /%3E%3C/defs%3E%3Cg fill='rgba(255,255,255,0.5)'%3E%3Cg transform='translate(30,35)'%3E%3Cuse href='%23p' transform='rotate(0)' /%3E%3Cuse href='%23p' transform='rotate(72)' /%3E%3Cuse href='%23p' transform='rotate(144)' /%3E%3Cuse href='%23p' transform='rotate(216)' /%3E%3Cuse href='%23p' transform='rotate(288)' /%3E%3Ccircle r='3' fill='rgba(255,255,255,0.35)' /%3E%3C/g%3E%3Cg transform='translate(150,25) scale(0.7)'%3E%3Cuse href='%23p' transform='rotate(15)' /%3E%3Cuse href='%23p' transform='rotate(87)' /%3E%3Cuse href='%23p' transform='rotate(159)' /%3E%3Cuse href='%23p' transform='rotate(231)' /%3E%3Cuse href='%23p' transform='rotate(303)' /%3E%3Ccircle r='3' fill='rgba(255,255,255,0.35)' /%3E%3C/g%3E%3Cg transform='translate(95,90) scale(0.85)'%3E%3Cuse href='%23p' transform='rotate(30)' /%3E%3Cuse href='%23p' transform='rotate(102)' /%3E%3Cuse href='%23p' transform='rotate(174)' /%3E%3Cuse href='%23p' transform='rotate(246)' /%3E%3Cuse href='%23p' transform='rotate(318)' /%3E%3Ccircle r='3' fill='rgba(255,255,255,0.35)' /%3E%3C/g%3E%3Cg transform='translate(170,130) scale(0.6)'%3E%3Cuse href='%23p' transform='rotate(50)' /%3E%3Cuse href='%23p' transform='rotate(122)' /%3E%3Cuse href='%23p' transform='rotate(194)' /%3E%3Cuse href='%23p' transform='rotate(266)' /%3E%3Cuse href='%23p' transform='rotate(338)' /%3E%3Ccircle r='3' fill='rgba(255,255,255,0.35)' /%3E%3C/g%3E%3Cg transform='translate(45,160) scale(0.75)'%3E%3Cuse href='%23p' transform='rotate(10)' /%3E%3Cuse href='%23p' transform='rotate(82)' /%3E%3Cuse href='%23p' transform='rotate(154)' /%3E%3Cuse href='%23p' transform='rotate(226)' /%3E%3Cuse href='%23p' transform='rotate(298)' /%3E%3Ccircle r='3' fill='rgba(255,255,255,0.35)' /%3E%3C/g%3E%3Cuse href='%23lp' transform='translate(120,155) rotate(45) scale(0.5)' fill='rgba(255,255,255,0.4)' /%3E%3Cuse href='%23lp' transform='translate(75,55) rotate(-30) scale(0.45)' fill='rgba(255,255,255,0.35)' /%3E%3Cuse href='%23lp' transform='translate(185,75) rotate(70) scale(0.4)' fill='rgba(255,255,255,0.35)' /%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+}
+#board.panning { cursor: grabbing; }
+
+#board-transform {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  width: 0;
+  height: 0;
+}
+
+/* SVG Connections Layer */
+#connections {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+#connections path {
+  fill: none;
+  stroke-width: 2.5;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+#connections path:hover { stroke-width: 4; }
+
+/* Cards Layer */
+#cards-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+}
+
+/* Board Card */
+.board-card {
+  position: absolute;
+  width: 200px;
+  background: var(--card-bg);
+  border: 1px solid var(--beige);
+  border-radius: 10px;
+  padding: 12px;
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: box-shadow 0.2s;
+  user-select: none;
+}
+.board-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+.board-card:active { cursor: grabbing; }
+.board-card .bc-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.board-card .bc-emoji { font-size: 20px; }
+.board-card .bc-name { font-size: 13px; font-weight: 600; flex: 1; }
+.board-card .bc-desc { font-size: 11px; color: var(--stone); line-height: 1.4; margin-bottom: 8px; }
+.board-card .bc-meta { display: flex; gap: 10px; font-size: 11px; color: var(--stone); }
+.board-card .bc-meta span { display: flex; align-items: center; gap: 3px; }
+
+/* Card delete button */
+.board-card .bc-delete {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--terracotta);
+  color: #fff;
+  border: 2px solid var(--card-bg);
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 5;
+}
+.board-card:hover .bc-delete { opacity: 1; }
+
+/* Connection dots */
+.conn-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--moss);
+  border: 2px solid var(--card-bg);
+  cursor: crosshair;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 5;
+}
+.board-card:hover .conn-dot, .conn-dot.active { opacity: 1; }
+.conn-dot.top { top: -6px; left: 50%; transform: translateX(-50%); }
+.conn-dot.bottom { bottom: -6px; left: 50%; transform: translateX(-50%); }
+.conn-dot.left { left: -6px; top: 50%; transform: translateY(-50%); }
+.conn-dot.right { right: -6px; top: 50%; transform: translateY(-50%); }
+
+/* Drag ghost */
+.drag-ghost {
+  position: fixed;
+  width: 200px;
+  background: var(--card-bg);
+  border: 1px solid var(--terracotta);
+  border-radius: 10px;
+  padding: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.9;
+}
+
+/* ========== Floating Action Buttons ========== */
+#fab-group {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 50;
+}
+.fab {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--card-bg);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.12);
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.fab:hover { transform: scale(1.1); box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
+.fab.danger:hover { background: #f5e0e0; }
+
+/* ========== Stats Panel ========== */
+#stats-panel {
+  position: fixed;
+  bottom: 80px;
+  right: 80px;
+  background: var(--card-bg);
+  border: 1px solid var(--beige);
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  z-index: 50;
+  display: none;
+  min-width: 200px;
+}
+#stats-panel.visible { display: block; }
+#stats-panel h3 { font-size: 13px; color: var(--stone); font-weight: 500; margin-bottom: 10px; }
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--bg);
+  font-size: 13px;
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-value { font-weight: 600; }
+.stat-value.green { color: var(--moss); }
+.stat-value.yellow { color: #C6A84B; }
+.stat-value.red { color: var(--terracotta); }
+
+/* Temp connection line */
+#temp-line {
+  fill: none;
+  stroke: var(--moss);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  pointer-events: none;
+}
+
+/* Connection delete (shown on hover via JS) */
+.conn-delete-btn {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--terracotta);
+  color: #fff;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid var(--card-bg);
+  z-index: 10;
+  transform: translate(-50%, -50%);
+}
+
+/* ========== Print Styles ========== */
+@media print {
+  #sidebar, #fab-group, #stats-panel, .bc-delete, .conn-dot, #sidebar-toggle { display: none !important; }
+  #board { position: static; overflow: visible; background-image: none !important; }
+  #board-transform { position: static; transform: none !important; }
+  .board-card {
+    position: relative !important;
+    display: inline-block;
+    margin: 8px;
+    left: auto !important;
+    top: auto !important;
+    break-inside: avoid;
+  }
+  #connections { display: none; }
+  body { background: #fff; overflow: visible; }
+  #app { display: block; height: auto; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <div id="sidebar-toggle" title="Toggle sidebar">‹</div>
+    <div id="sidebar-inner">
+      <div id="search-wrap">
+        <input id="search" type="text" placeholder="Search activities...">
+      </div>
+      <div id="tabs"></div>
+      <div id="activity-list"></div>
+    </div>
+  </aside>
+
+  <!-- Main Board -->
+  <main id="board">
+    <div id="board-transform">
+      <svg id="connections">
+        <defs id="gradient-defs"></defs>
+        <path id="temp-line" d=""/>
+      </svg>
+      <div id="cards-layer"></div>
+    </div>
+  </main>
+
+  <!-- Floating Action Buttons -->
+  <div id="fab-group">
+    <button class="fab" id="fab-stats" title="Budget & Time Stats">📊</button>
+    <button class="fab" id="fab-export" title="Export JSON">💾</button>
+    <button class="fab" id="fab-import" title="Import JSON">📂</button>
+    <button class="fab" id="fab-print" title="Print / PDF">🖨️</button>
+    <button class="fab danger" id="fab-clear" title="Clear Board">🗑️</button>
+  </div>
+
+  <!-- Stats Panel -->
+  <div id="stats-panel">
+    <h3>Trip Summary</h3>
+    <div class="stat-row">
+      <span>Activities</span>
+      <span class="stat-value" id="stat-count">0</span>
+    </div>
+    <div class="stat-row">
+      <span>Total Time</span>
+      <span class="stat-value" id="stat-time">0h</span>
+    </div>
+    <div class="stat-row">
+      <span>Total Budget</span>
+      <span class="stat-value" id="stat-budget">$0</span>
+    </div>
+    <div class="stat-row">
+      <span>Tokyo</span>
+      <span class="stat-value" id="stat-tokyo">0</span>
+    </div>
+    <div class="stat-row">
+      <span>Osaka</span>
+      <span class="stat-value" id="stat-osaka">0</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   JAPAN TRIP PLANNER - Single-file Interactive Board
+   ================================================================ */
+
+// ========== Activity Data ==========
+const ACTIVITIES = [
+  // Tokyo - Sightseeing
+  { id: 't1', emoji: '⛩️', name: 'Senso-ji Temple', desc: "Asakusa's ancient Buddhist temple", duration: 1.5, cost: 0, city: 'Tokyo', cat: 'Sightseeing' },
+  { id: 't2', emoji: '🏙️', name: 'Shibuya Crossing', desc: "World's busiest intersection", duration: 0.5, cost: 0, city: 'Tokyo', cat: 'Sightseeing' },
+  { id: 't5', emoji: '🌸', name: 'Shinjuku Gyoen', desc: 'Beautiful garden & park', duration: 2, cost: 5, city: 'Tokyo', cat: 'Nature' },
+  { id: 't6', emoji: '🗼', name: 'Tokyo Tower', desc: 'Iconic observation tower', duration: 1.5, cost: 12, city: 'Tokyo', cat: 'Sightseeing' },
+  { id: 't9', emoji: '🏯', name: 'Imperial Palace', desc: "Emperor's residence & gardens", duration: 2, cost: 0, city: 'Tokyo', cat: 'Sightseeing' },
+  { id: 't10', emoji: '🦌', name: 'Meiji Shrine', desc: 'Forested Shinto shrine', duration: 1.5, cost: 0, city: 'Tokyo', cat: 'Sightseeing' },
+  { id: 't13', emoji: '🌃', name: 'Roppongi Hills', desc: 'Observation deck & nightlife', duration: 2, cost: 20, city: 'Tokyo', cat: 'Nightlife' },
+  { id: 't14', emoji: '🎪', name: 'teamLab Borderless', desc: 'Digital art museum', duration: 2.5, cost: 25, city: 'Tokyo', cat: 'Culture' },
+  { id: 't19', emoji: '🍡', name: 'Yanaka District', desc: 'Old-town Tokyo walking', duration: 2, cost: 5, city: 'Tokyo', cat: 'Culture' },
+  // Tokyo - Food & Drink
+  { id: 't3', emoji: '🐟', name: 'Tsukiji Outer Market', desc: 'Fresh seafood & street food', duration: 2, cost: 15, city: 'Tokyo', cat: 'Food & Drink' },
+  { id: 't7', emoji: '🍜', name: 'Ramen Street', desc: 'Top ramen shops at Tokyo Station', duration: 1, cost: 12, city: 'Tokyo', cat: 'Food & Drink' },
+  { id: 't12', emoji: '🍣', name: 'Sushi Dai', desc: 'Famous Toyosu sushi', duration: 1, cost: 35, city: 'Tokyo', cat: 'Food & Drink' },
+  { id: 't15', emoji: '🍶', name: 'Golden Gai', desc: 'Tiny bars in Shinjuku', duration: 2, cost: 20, city: 'Tokyo', cat: 'Nightlife' },
+  // Tokyo - Culture & Shopping
+  { id: 't8', emoji: '🎭', name: 'Kabuki Theater', desc: 'Traditional Japanese drama', duration: 3, cost: 40, city: 'Tokyo', cat: 'Culture' },
+  { id: 't4', emoji: '🎮', name: 'Akihabara', desc: 'Electronics & anime district', duration: 3, cost: 30, city: 'Tokyo', cat: 'Shopping' },
+  { id: 't11', emoji: '🛍️', name: 'Harajuku', desc: 'Youth fashion & Takeshita Street', duration: 2.5, cost: 25, city: 'Tokyo', cat: 'Shopping' },
+  { id: 't17', emoji: '📚', name: 'Nakano Broadway', desc: 'Otaku shopping complex', duration: 2, cost: 20, city: 'Tokyo', cat: 'Shopping' },
+  // Tokyo - Nature & Other
+  { id: 't16', emoji: '🚂', name: 'Odaiba', desc: 'Futuristic entertainment island', duration: 4, cost: 15, city: 'Tokyo', cat: 'Sightseeing' },
+  { id: 't18', emoji: '🏔️', name: 'Mt. Takao Day Trip', desc: 'Easy mountain hike near Tokyo', duration: 5, cost: 10, city: 'Tokyo', cat: 'Nature' },
+  { id: 't20', emoji: '🎯', name: 'Robot Restaurant', desc: 'Wild robotic dinner show', duration: 2, cost: 60, city: 'Tokyo', cat: 'Nightlife' },
+
+  // Osaka - Sightseeing
+  { id: 'o1', emoji: '🏯', name: 'Osaka Castle', desc: 'Iconic castle & park', duration: 2, cost: 8, city: 'Osaka', cat: 'Sightseeing' },
+  { id: 'o4', emoji: '⛩️', name: 'Sumiyoshi Taisha', desc: 'Oldest shrine in Osaka', duration: 1.5, cost: 0, city: 'Osaka', cat: 'Sightseeing' },
+  { id: 'o5', emoji: '🎡', name: 'Tempozan Ferris Wheel', desc: 'Harbor area giant wheel', duration: 1, cost: 8, city: 'Osaka', cat: 'Sightseeing' },
+  { id: 'o7', emoji: '🌅', name: 'Umeda Sky Building', desc: 'Floating garden observatory', duration: 1.5, cost: 12, city: 'Osaka', cat: 'Sightseeing' },
+  { id: 'o14', emoji: '🧘', name: 'Shitennoji Temple', desc: "Japan's oldest official temple", duration: 1.5, cost: 5, city: 'Osaka', cat: 'Sightseeing' },
+  { id: 'o19', emoji: '🌃', name: 'Namba Parks', desc: 'Terraced rooftop garden', duration: 1, cost: 0, city: 'Osaka', cat: 'Nature' },
+  // Osaka - Food & Drink
+  { id: 'o2', emoji: '🐙', name: 'Dotonbori', desc: 'Neon food street & canal', duration: 2.5, cost: 15, city: 'Osaka', cat: 'Food & Drink' },
+  { id: 'o3', emoji: '🍢', name: 'Shinsekai', desc: 'Retro district & kushikatsu', duration: 2, cost: 12, city: 'Osaka', cat: 'Food & Drink' },
+  { id: 'o6', emoji: '🐟', name: 'Kuromon Market', desc: '"Osaka\'s kitchen" market', duration: 2, cost: 20, city: 'Osaka', cat: 'Food & Drink' },
+  { id: 'o8', emoji: '🍜', name: 'Ichiran Ramen', desc: 'Famous tonkotsu ramen', duration: 1, cost: 12, city: 'Osaka', cat: 'Food & Drink' },
+  { id: 'o15', emoji: '🐙', name: 'Takoyaki Museum', desc: 'Octopus ball tasting', duration: 1.5, cost: 10, city: 'Osaka', cat: 'Food & Drink' },
+  { id: 'o17', emoji: '🍖', name: 'Yakiniku (Korean BBQ)', desc: 'Tsuruhashi Korean town', duration: 1.5, cost: 25, city: 'Osaka', cat: 'Food & Drink' },
+  // Osaka - Nightlife
+  { id: 'o12', emoji: '🍻', name: 'Hozenji Yokocho', desc: 'Atmospheric alley bars', duration: 2, cost: 18, city: 'Osaka', cat: 'Nightlife' },
+  // Osaka - Culture
+  { id: 'o9', emoji: '🎭', name: 'Bunraku Theater', desc: 'Traditional puppet theater', duration: 2.5, cost: 30, city: 'Osaka', cat: 'Culture' },
+  { id: 'o11', emoji: '🌸', name: 'Osaka Mint Bureau', desc: 'Cherry blossom walkway', duration: 1, cost: 0, city: 'Osaka', cat: 'Nature' },
+  // Osaka - Shopping
+  { id: 'o10', emoji: '🛍️', name: 'Shinsaibashi', desc: 'Premier shopping arcade', duration: 3, cost: 30, city: 'Osaka', cat: 'Shopping' },
+  { id: 'o13', emoji: '🎮', name: 'Den Den Town', desc: "Osaka's Akihabara", duration: 2.5, cost: 25, city: 'Osaka', cat: 'Shopping' },
+  // Osaka - Nature & Other
+  { id: 'o16', emoji: '🌊', name: 'Minoo Waterfall', desc: 'Nature hike in Osaka', duration: 3, cost: 0, city: 'Osaka', cat: 'Nature' },
+  { id: 'o18', emoji: '🎪', name: 'Universal Studios Japan', desc: 'Theme park full day', duration: 8, cost: 75, city: 'Osaka', cat: 'Sightseeing' },
+  { id: 'o20', emoji: '🚤', name: 'Dotonbori River Cruise', desc: 'Canal sightseeing boat', duration: 1, cost: 10, city: 'Osaka', cat: 'Sightseeing' },
+
+  // Tokyo - Additional
+  { id: 't21', emoji: '🎨', name: 'Mori Art Museum', desc: 'Contemporary art in Roppongi', duration: 2, cost: 18, city: 'Tokyo', cat: 'Culture' },
+  { id: 't22', emoji: '🍰', name: 'Shimokitazawa', desc: 'Bohemian cafes & vintage shops', duration: 2.5, cost: 15, city: 'Tokyo', cat: 'Shopping' },
+  { id: 't23', emoji: '🌊', name: 'Toyosu Fish Market', desc: 'Tuna auction viewing deck', duration: 2, cost: 0, city: 'Tokyo', cat: 'Sightseeing' },
+  { id: 't24', emoji: '🏮', name: 'Omoide Yokocho', desc: 'Atmospheric smoky alley food', duration: 1.5, cost: 15, city: 'Tokyo', cat: 'Food & Drink' },
+  { id: 't25', emoji: '🚄', name: 'Tokyo Skytree', desc: "Japan's tallest tower", duration: 2, cost: 18, city: 'Tokyo', cat: 'Sightseeing' },
+  { id: 't26', emoji: '🎎', name: 'Edo-Tokyo Museum', desc: 'Edo period history exhibits', duration: 2, cost: 10, city: 'Tokyo', cat: 'Culture' },
+  { id: 't27', emoji: '🍵', name: 'Tea Ceremony Experience', desc: 'Traditional matcha preparation', duration: 1.5, cost: 30, city: 'Tokyo', cat: 'Culture' },
+  { id: 't28', emoji: '🎤', name: 'Karaoke in Shibuya', desc: 'Private room singing', duration: 2, cost: 20, city: 'Tokyo', cat: 'Nightlife' },
+  { id: 't29', emoji: '🐕', name: 'Hachiko Statue', desc: 'Famous loyal dog memorial', duration: 0.5, cost: 0, city: 'Tokyo', cat: 'Sightseeing' },
+  { id: 't30', emoji: '🛶', name: 'Sumida River Cruise', desc: 'Waterbus through Tokyo', duration: 1, cost: 10, city: 'Tokyo', cat: 'Sightseeing' },
+
+  // Osaka - Additional
+  { id: 'o21', emoji: '🎢', name: 'Tsutenkaku Tower', desc: 'Retro Osaka observation tower', duration: 1, cost: 8, city: 'Osaka', cat: 'Sightseeing' },
+  { id: 'o22', emoji: '🍰', name: 'Pablo Cheesecake', desc: 'Famous Osaka cheesecake tart', duration: 0.5, cost: 8, city: 'Osaka', cat: 'Food & Drink' },
+  { id: 'o23', emoji: '♨️', name: 'Spa World', desc: 'Multi-themed hot spring complex', duration: 3, cost: 20, city: 'Osaka', cat: 'Culture' },
+  { id: 'o24', emoji: '⚾', name: 'Osaka Dome', desc: 'Baseball game experience', duration: 3, cost: 35, city: 'Osaka', cat: 'Culture' },
+  { id: 'o25', emoji: '🦀', name: 'Zuboraya (Fugu)', desc: 'Blowfish dining experience', duration: 1.5, cost: 40, city: 'Osaka', cat: 'Food & Drink' },
+  { id: 'o26', emoji: '🌉', name: 'Nakanoshima Park', desc: 'Waterfront rose garden stroll', duration: 1.5, cost: 0, city: 'Osaka', cat: 'Nature' },
+  { id: 'o27', emoji: '🍵', name: 'Rikyu Tea House', desc: 'Sakai-style tea ceremony', duration: 1.5, cost: 25, city: 'Osaka', cat: 'Culture' },
+  { id: 'o28', emoji: '🎵', name: 'Osaka Philharmonic', desc: 'Concert at Symphony Hall', duration: 2.5, cost: 35, city: 'Osaka', cat: 'Culture' },
+  { id: 'o29', emoji: '🏪', name: 'Doguyasuji Market', desc: 'Kitchen tool shopping street', duration: 1.5, cost: 10, city: 'Osaka', cat: 'Shopping' },
+  { id: 'o30', emoji: '🚶', name: 'Tennoji Park & Zoo', desc: 'Green space & historic zoo', duration: 2, cost: 5, city: 'Osaka', cat: 'Nature' },
+];
+
+const CATEGORIES = ['All', 'Sightseeing', 'Food & Drink', 'Culture', 'Shopping', 'Nightlife', 'Nature'];
+
+// ========== State ==========
+let state = {
+  cards: [],       // { uid, actId, x, y }
+  connections: [], // { id, fromUid, fromSide, toUid, toSide }
+  pan: { x: 0, y: 0 },
+  zoom: 1,
+};
+let nextUid = 1;
+let nextConnId = 1;
+
+// ========== DOM Refs ==========
+const sidebar = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebar-toggle');
+const searchInput = document.getElementById('search');
+const tabsEl = document.getElementById('tabs');
+const actListEl = document.getElementById('activity-list');
+const board = document.getElementById('board');
+const boardTransform = document.getElementById('board-transform');
+const connectionsEl = document.getElementById('connections');
+const gradientDefs = document.getElementById('gradient-defs');
+const cardsLayer = document.getElementById('cards-layer');
+const tempLine = document.getElementById('temp-line');
+const statsPanel = document.getElementById('stats-panel');
+
+let activeTab = 'All';
+let searchQuery = '';
+
+// ========== Sidebar ==========
+function renderTabs() {
+  tabsEl.innerHTML = CATEGORIES.map(c =>
+    `<button class="tab${c === activeTab ? ' active' : ''}" data-cat="${c}">${c}</button>`
+  ).join('');
+}
+
+function renderLibrary() {
+  const filtered = ACTIVITIES.filter(a => {
+    const matchCat = activeTab === 'All' || a.cat === activeTab;
+    const matchSearch = !searchQuery || a.name.toLowerCase().includes(searchQuery) || a.desc.toLowerCase().includes(searchQuery) || a.city.toLowerCase().includes(searchQuery);
+    return matchCat && matchSearch;
+  });
+  actListEl.innerHTML = filtered.map(a => `
+    <div class="lib-card" data-id="${a.id}" draggable="false">
+      <div class="lc-header">
+        <span class="lc-emoji">${a.emoji}</span>
+        <span class="lc-name">${a.name}</span>
+        <span class="lc-city">${a.city}</span>
+      </div>
+      <div class="lc-desc">${a.desc}</div>
+      <div class="lc-meta">
+        <span>🕐 ${a.duration}h</span>
+        <span>💴 ${a.cost === 0 ? 'Free' : '$' + a.cost}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+tabsEl.addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  activeTab = tab.dataset.cat;
+  renderTabs();
+  renderLibrary();
+});
+
+searchInput.addEventListener('input', e => {
+  searchQuery = e.target.value.toLowerCase();
+  renderLibrary();
+});
+
+sidebarToggle.addEventListener('click', () => {
+  sidebar.classList.toggle('collapsed');
+  sidebarToggle.textContent = sidebar.classList.contains('collapsed') ? '›' : '‹';
+});
+
+// ========== Drag from Sidebar ==========
+let dragData = null; // { actId, ghost, offsetX, offsetY }
+
+actListEl.addEventListener('mousedown', e => {
+  const card = e.target.closest('.lib-card');
+  if (!card) return;
+  e.preventDefault();
+  const act = ACTIVITIES.find(a => a.id === card.dataset.id);
+  if (!act) return;
+
+  const ghost = document.createElement('div');
+  ghost.className = 'drag-ghost';
+  ghost.innerHTML = `<div class="lc-header"><span class="lc-emoji">${act.emoji}</span><span class="lc-name">${act.name}</span></div>`;
+  document.body.appendChild(ghost);
+  ghost.style.left = (e.clientX - 100) + 'px';
+  ghost.style.top = (e.clientY - 20) + 'px';
+
+  dragData = { actId: act.id, ghost, offsetX: 100, offsetY: 20, source: 'library' };
+});
+
+document.addEventListener('mousemove', e => {
+  if (!dragData) return;
+  dragData.ghost.style.left = (e.clientX - dragData.offsetX) + 'px';
+  dragData.ghost.style.top = (e.clientY - dragData.offsetY) + 'px';
+});
+
+document.addEventListener('mouseup', e => {
+  if (!dragData || dragData.source !== 'library') return;
+  dragData.ghost.remove();
+
+  // Check if drop is over the board
+  const boardRect = board.getBoundingClientRect();
+  if (e.clientX >= boardRect.left && e.clientX <= boardRect.right &&
+      e.clientY >= boardRect.top && e.clientY <= boardRect.bottom) {
+    const x = (e.clientX - boardRect.left - state.pan.x) / state.zoom - 100;
+    const y = (e.clientY - boardRect.top - state.pan.y) / state.zoom - 20;
+    addCardToBoard(dragData.actId, x, y);
+  }
+  dragData = null;
+});
+
+// ========== Board Cards ==========
+function addCardToBoard(actId, x, y) {
+  const uid = nextUid++;
+  state.cards.push({ uid, actId, x, y });
+  renderBoardCard(uid);
+  updateStats();
+  saveState();
+}
+
+function renderBoardCard(uid) {
+  const cardData = state.cards.find(c => c.uid === uid);
+  if (!cardData) return;
+  const act = ACTIVITIES.find(a => a.id === cardData.actId);
+  if (!act) return;
+
+  const el = document.createElement('div');
+  el.className = 'board-card';
+  el.dataset.uid = uid;
+  el.style.left = cardData.x + 'px';
+  el.style.top = cardData.y + 'px';
+  el.innerHTML = `
+    <button class="bc-delete" title="Remove">×</button>
+    <div class="conn-dot top" data-side="top"></div>
+    <div class="conn-dot bottom" data-side="bottom"></div>
+    <div class="conn-dot left" data-side="left"></div>
+    <div class="conn-dot right" data-side="right"></div>
+    <div class="bc-header">
+      <span class="bc-emoji">${act.emoji}</span>
+      <span class="bc-name">${act.name}</span>
+    </div>
+    <div class="bc-desc">${act.desc}</div>
+    <div class="bc-meta">
+      <span>🕐 ${act.duration}h</span>
+      <span>💴 ${act.cost === 0 ? 'Free' : '$' + act.cost}</span>
+      <span style="margin-left:auto;font-size:10px;color:var(--beige)">${act.city}</span>
+    </div>
+  `;
+  cardsLayer.appendChild(el);
+
+  // Delete button
+  el.querySelector('.bc-delete').addEventListener('click', e => {
+    e.stopPropagation();
+    deleteCard(uid);
+  });
+
+  // Connection dots
+  el.querySelectorAll('.conn-dot').forEach(dot => {
+    dot.addEventListener('mousedown', e => {
+      e.stopPropagation();
+      startConnection(uid, dot.dataset.side, e);
+    });
+  });
+
+  // Drag on board
+  el.addEventListener('mousedown', e => {
+    if (e.target.closest('.bc-delete') || e.target.closest('.conn-dot')) return;
+    startCardDrag(uid, el, e);
+  });
+}
+
+function deleteCard(uid) {
+  state.cards = state.cards.filter(c => c.uid !== uid);
+  state.connections = state.connections.filter(c => c.fromUid !== uid && c.toUid !== uid);
+  const el = cardsLayer.querySelector(`[data-uid="${uid}"]`);
+  if (el) el.remove();
+  renderConnections();
+  updateStats();
+  saveState();
+}
+
+// ========== Card Dragging on Board ==========
+let cardDrag = null;
+
+function startCardDrag(uid, el, e) {
+  e.preventDefault();
+  const cardData = state.cards.find(c => c.uid === uid);
+  if (!cardData) return;
+
+  const startMouse = { x: e.clientX, y: e.clientY };
+  const startPos = { x: cardData.x, y: cardData.y };
+
+  cardDrag = { uid, el, startMouse, startPos };
+
+  const onMove = ev => {
+    const dx = (ev.clientX - startMouse.x) / state.zoom;
+    const dy = (ev.clientY - startMouse.y) / state.zoom;
+    cardData.x = startPos.x + dx;
+    cardData.y = startPos.y + dy;
+    el.style.left = cardData.x + 'px';
+    el.style.top = cardData.y + 'px';
+    renderConnections();
+  };
+
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    cardDrag = null;
+    saveState();
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+// ========== Connection System ==========
+let connStart = null; // { uid, side }
+
+function startConnection(uid, side, e) {
+  e.preventDefault();
+  if (connStart) {
+    // Complete connection
+    if (connStart.uid !== uid) {
+      const id = nextConnId++;
+      state.connections.push({ id, fromUid: connStart.uid, fromSide: connStart.side, toUid: uid, toSide: side });
+      renderConnections();
+      saveState();
+    }
+    clearConnStart();
+  } else {
+    connStart = { uid, side };
+    // Highlight the active dot
+    const card = cardsLayer.querySelector(`[data-uid="${uid}"]`);
+    if (card) {
+      card.querySelector(`.conn-dot.${side}`).classList.add('active');
+    }
+    // Track mouse for temp line
+    document.addEventListener('mousemove', onTempLineMove);
+    document.addEventListener('mouseup', onTempLineUp);
+  }
+}
+
+function onTempLineMove(e) {
+  if (!connStart) return;
+  const from = getDotPos(connStart.uid, connStart.side);
+  if (!from) return;
+  const boardRect = board.getBoundingClientRect();
+  const toX = (e.clientX - boardRect.left - state.pan.x) / state.zoom;
+  const toY = (e.clientY - boardRect.top - state.pan.y) / state.zoom;
+  const d = bezierPath(from.x, from.y, toX, toY);
+  tempLine.setAttribute('d', d);
+}
+
+function onTempLineUp(e) {
+  // If clicking on a conn-dot, the dot's mousedown will handle it
+  // Otherwise, cancel
+  const dot = e.target.closest('.conn-dot');
+  if (!dot) {
+    clearConnStart();
+  }
+}
+
+function clearConnStart() {
+  if (connStart) {
+    const card = cardsLayer.querySelector(`[data-uid="${connStart.uid}"]`);
+    if (card) {
+      card.querySelectorAll('.conn-dot.active').forEach(d => d.classList.remove('active'));
+    }
+  }
+  connStart = null;
+  tempLine.setAttribute('d', '');
+  document.removeEventListener('mousemove', onTempLineMove);
+  document.removeEventListener('mouseup', onTempLineUp);
+}
+
+function getDotPos(uid, side) {
+  const cardData = state.cards.find(c => c.uid === uid);
+  if (!cardData) return null;
+  const el = cardsLayer.querySelector(`[data-uid="${uid}"]`);
+  if (!el) return null;
+  const w = el.offsetWidth;
+  const h = el.offsetHeight;
+  switch (side) {
+    case 'top': return { x: cardData.x + w / 2, y: cardData.y };
+    case 'bottom': return { x: cardData.x + w / 2, y: cardData.y + h };
+    case 'left': return { x: cardData.x, y: cardData.y + h / 2 };
+    case 'right': return { x: cardData.x + w, y: cardData.y + h / 2 };
+  }
+}
+
+function bezierPath(x1, y1, x2, y2) {
+  const dx = Math.abs(x2 - x1) * 0.5;
+  const dy = Math.abs(y2 - y1) * 0.5;
+  const offset = Math.max(dx, dy, 50);
+  // Auto-choose control points based on direction
+  const cx1 = x1 + (x2 > x1 ? offset : -offset) * 0.5;
+  const cy1 = y1 + (y2 > y1 ? offset : -offset) * 0.5;
+  const cx2 = x2 - (x2 > x1 ? offset : -offset) * 0.5;
+  const cy2 = y2 - (y2 > y1 ? offset : -offset) * 0.5;
+  return `M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`;
+}
+
+function renderConnections() {
+  // Clear existing paths (but not defs or temp line)
+  connectionsEl.querySelectorAll('path:not(#temp-line)').forEach(p => p.remove());
+  gradientDefs.innerHTML = '';
+  // Remove any delete buttons
+  boardTransform.querySelectorAll('.conn-delete-btn').forEach(b => b.remove());
+
+  state.connections.forEach(conn => {
+    const from = getDotPos(conn.fromUid, conn.fromSide);
+    const to = getDotPos(conn.toUid, conn.toSide);
+    if (!from || !to) return;
+
+    // Create gradient
+    const gradId = `grad-${conn.id}`;
+    const grad = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+    grad.setAttribute('id', gradId);
+    grad.setAttribute('gradientUnits', 'userSpaceOnUse');
+    grad.setAttribute('x1', from.x);
+    grad.setAttribute('y1', from.y);
+    grad.setAttribute('x2', to.x);
+    grad.setAttribute('y2', to.y);
+    grad.innerHTML = `<stop offset="0%" stop-color="var(--terracotta)"/><stop offset="100%" stop-color="var(--moss)"/>`;
+    gradientDefs.appendChild(grad);
+
+    // Create path
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', bezierPath(from.x, from.y, to.x, to.y));
+    path.setAttribute('stroke', `url(#${gradId})`);
+    path.dataset.connId = conn.id;
+
+    // Click to delete connection
+    path.style.pointerEvents = 'stroke';
+    path.style.cursor = 'pointer';
+    path.addEventListener('click', e => {
+      e.stopPropagation();
+      // Show delete button at midpoint
+      const mx = (from.x + to.x) / 2;
+      const my = (from.y + to.y) / 2;
+      showConnDelete(conn.id, mx, my);
+    });
+
+    connectionsEl.appendChild(path);
+  });
+}
+
+function showConnDelete(connId, x, y) {
+  // Remove any existing
+  boardTransform.querySelectorAll('.conn-delete-btn').forEach(b => b.remove());
+  const btn = document.createElement('div');
+  btn.className = 'conn-delete-btn';
+  btn.textContent = '×';
+  btn.style.left = x + 'px';
+  btn.style.top = y + 'px';
+  btn.addEventListener('click', () => {
+    state.connections = state.connections.filter(c => c.id !== connId);
+    renderConnections();
+    saveState();
+  });
+  boardTransform.appendChild(btn);
+
+  // Auto-remove after 3s
+  setTimeout(() => { if (btn.parentNode) btn.remove(); }, 3000);
+}
+
+// ========== Pan & Zoom ==========
+let isPanning = false;
+let panStart = { x: 0, y: 0 };
+
+board.addEventListener('mousedown', e => {
+  // Only pan on empty board space
+  if (e.target === board || e.target === boardTransform || e.target === connectionsEl) {
+    e.preventDefault();
+    isPanning = true;
+    panStart = { x: e.clientX - state.pan.x, y: e.clientY - state.pan.y };
+    board.classList.add('panning');
+
+    // Clear any connection start if clicking empty space
+    if (connStart) clearConnStart();
+    // Clear any connection delete buttons
+    boardTransform.querySelectorAll('.conn-delete-btn').forEach(b => b.remove());
+  }
+});
+
+document.addEventListener('mousemove', e => {
+  if (!isPanning) return;
+  state.pan.x = e.clientX - panStart.x;
+  state.pan.y = e.clientY - panStart.y;
+  applyTransform();
+});
+
+document.addEventListener('mouseup', () => {
+  if (isPanning) {
+    isPanning = false;
+    board.classList.remove('panning');
+    saveState();
+  }
+});
+
+board.addEventListener('wheel', e => {
+  e.preventDefault();
+  const boardRect = board.getBoundingClientRect();
+  const mouseX = e.clientX - boardRect.left;
+  const mouseY = e.clientY - boardRect.top;
+
+  const prevZoom = state.zoom;
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  state.zoom = Math.min(3, Math.max(0.3, state.zoom * delta));
+
+  // Zoom toward cursor
+  state.pan.x = mouseX - (mouseX - state.pan.x) * (state.zoom / prevZoom);
+  state.pan.y = mouseY - (mouseY - state.pan.y) * (state.zoom / prevZoom);
+
+  applyTransform();
+  saveState();
+}, { passive: false });
+
+function applyTransform() {
+  boardTransform.style.transform = `translate(${state.pan.x}px, ${state.pan.y}px) scale(${state.zoom})`;
+}
+
+// ========== Stats ==========
+function updateStats() {
+  const placed = state.cards.map(c => ACTIVITIES.find(a => a.id === c.actId)).filter(Boolean);
+  const totalTime = placed.reduce((s, a) => s + a.duration, 0);
+  const totalCost = placed.reduce((s, a) => s + a.cost, 0);
+  const tokyoCount = placed.filter(a => a.city === 'Tokyo').length;
+  const osakaCount = placed.filter(a => a.city === 'Osaka').length;
+
+  document.getElementById('stat-count').textContent = placed.length;
+  document.getElementById('stat-budget').textContent = '$' + totalCost;
+
+  const timeEl = document.getElementById('stat-time');
+  timeEl.textContent = totalTime + 'h';
+  timeEl.className = 'stat-value ' + (totalTime <= 6 ? 'green' : totalTime <= 10 ? 'yellow' : 'red');
+
+  document.getElementById('stat-tokyo').textContent = tokyoCount;
+  document.getElementById('stat-osaka').textContent = osakaCount;
+}
+
+// ========== FAB Actions ==========
+document.getElementById('fab-stats').addEventListener('click', () => {
+  statsPanel.classList.toggle('visible');
+});
+
+document.getElementById('fab-export').addEventListener('click', () => {
+  const data = JSON.stringify({ cards: state.cards, connections: state.connections }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'japan-plan.json';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('fab-import').addEventListener('click', () => {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (data.cards && data.connections) {
+          state.cards = data.cards;
+          state.connections = data.connections;
+          nextUid = Math.max(0, ...state.cards.map(c => c.uid)) + 1;
+          nextConnId = Math.max(0, ...state.connections.map(c => c.id)) + 1;
+          rebuildBoard();
+          saveState();
+        }
+      } catch (err) {
+        alert('Invalid JSON file.');
+      }
+    };
+    reader.readAsText(file);
+  });
+  input.click();
+});
+
+document.getElementById('fab-print').addEventListener('click', () => {
+  window.print();
+});
+
+document.getElementById('fab-clear').addEventListener('click', () => {
+  if (!confirm('Clear all cards and connections from the board?')) return;
+  state.cards = [];
+  state.connections = [];
+  cardsLayer.innerHTML = '';
+  renderConnections();
+  updateStats();
+  saveState();
+});
+
+// ========== Save / Load ==========
+let saveTimer = null;
+function saveState() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    localStorage.setItem('japan-planner', JSON.stringify({
+      cards: state.cards,
+      connections: state.connections,
+      pan: state.pan,
+      zoom: state.zoom,
+      nextUid,
+      nextConnId,
+    }));
+  }, 500);
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem('japan-planner');
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    state.cards = data.cards || [];
+    state.connections = data.connections || [];
+    state.pan = data.pan || { x: 0, y: 0 };
+    state.zoom = data.zoom || 1;
+    nextUid = data.nextUid || (Math.max(0, ...state.cards.map(c => c.uid)) + 1);
+    nextConnId = data.nextConnId || (Math.max(0, ...state.connections.map(c => c.id)) + 1);
+    rebuildBoard();
+  } catch (e) {
+    console.warn('Failed to load saved state:', e);
+  }
+}
+
+function rebuildBoard() {
+  cardsLayer.innerHTML = '';
+  state.cards.forEach(c => renderBoardCard(c.uid));
+  renderConnections();
+  updateStats();
+  applyTransform();
+}
+
+// ========== Init ==========
+renderTabs();
+renderLibrary();
+loadState();
+applyTransform();
+updateStats();
+
+// Cancel drag if pressing Escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (connStart) clearConnStart();
+    if (dragData) {
+      dragData.ghost.remove();
+      dragData = null;
+    }
+  }
+});
+</script>
+</body>
+</html>
